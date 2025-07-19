@@ -59,13 +59,23 @@ create_repository() {
   if [[ "$http_code" -ne 200 ]]; then
     echo "GitHub API call failed with status $http_code"
     echo "Response: $http_body"
-  elif [[ "$userType" == "User" ]]; then
-    # User logic ...
-  elif [[ "$userType" == "Organization" ]]; then
-    # Organization logic ...
   else
-    echo "Invalid user type. Full response:"
-    echo "$http_body"
+    if [[ "$userType" == "User" ]]; then
+      curl -X POST -i -H "Authorization: token $github_token" -H "X-GitHub-Api-Version: 2022-11-28" \
+       -d "{ \
+          \"name\": \"$repository_name\", \"private\": true
+        }" \
+      $git_url/user/repos
+    elif [[ "$userType" == "Organization" ]]; then
+      curl -i -H "Authorization: token $github_token" \
+       -d "{ \
+          \"name\": \"$repository_name\", \"private\": true
+        }" \
+      $git_url/orgs/$org_name/repos
+    else
+      echo "Invalid user type. Full response:"
+      echo "$http_body"
+    fi
   fi
 }
 
