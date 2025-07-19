@@ -46,24 +46,26 @@ add_link() {
 }
 
 create_repository() {  
-  resp=$(curl -H "Authorization: token $github_token" -H "Accept: application/json" -H "Content-Type: application/json" $git_url/users/$org_name)
+  resp=$(curl -s -w "\n%{http_code}" -H "Authorization: token $github_token" \
+    -H "Accept: application/json" -H "Content-Type: application/json" \
+    $git_url/users/$org_name)
 
-  userType=$(jq -r '.type' <<< "$resp")
-    
-  if [ $userType == "User" ]; then
-    curl -X POST -i -H "Authorization: token $github_token" -H "X-GitHub-Api-Version: 2022-11-28" \
-       -d "{ \
-          \"name\": \"$repository_name\", \"private\": true
-        }" \
-      $git_url/user/repos
-  elif [ $userType == "Organization" ]; then
-    curl -i -H "Authorization: token $github_token" \
-       -d "{ \
-          \"name\": \"$repository_name\", \"private\": true
-        }" \
-      $git_url/orgs/$org_name/repos
+  # Separate response body and status code
+  http_body=$(echo "$resp" | sed '$d')
+  http_code=$(echo "$resp" | tail -n1)
+  
+  userType=$(jq -r '.type // empty' <<< "$http_body")
+  
+  if [[ "$http_code" -ne 200 ]]; then
+    echo "GitHub API call failed with status $http_code"
+    echo "Response: $http_body"
+  elif [[ "$userType" == "User" ]]; then
+    # User logic ...
+  elif [[ "$userType" == "Organization" ]]; then
+    # Organization logic ...
   else
-    echo "Invalid user type"
+    echo "Invalid user type. Full response:"
+    echo "$http_body"
   fi
 }
 
